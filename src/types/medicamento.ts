@@ -1,0 +1,31 @@
+export interface Medicamento {
+  codestablecimiento: number;
+  gru_codigo: string;
+  med_codigo: string;
+  gru_descripcion: string;
+  med_comercial: string;
+  med_codificacion: string;
+  med_unidad: string;
+  med_concentracion: string;
+  med_tipo: string;
+  tipo_med: string;
+  ant_entradas: number;
+  ant_salidas: number;
+  saldo_inicial: number;
+  ant_entradas_costo: number;
+  ant_salidas_costo: number;
+  saldo_inicial_costo: number;
+  entradas: number;
+  salidas: number;
+  saldo: number;
+  entradas_costo: number;
+  salidas_costo: number;
+  costo: number;
+  meses_activos: number;
+  consumo_promedio: number;
+  consumo_promedio1_5: number;
+  consumo_promedio4_5: number;
+  estado_inventario: string | null;
+  fecha_inicial: string;
+  fecha_final: string;
+}
