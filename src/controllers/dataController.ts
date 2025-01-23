@@ -19,19 +19,28 @@ const ajustarTipos = (datos: Medicamento[]): Medicamento[] => {
 };
 
 /**
- * Controlador para recibir, eliminar datos antiguos y almacenar nuevos registros.
- *
- * @param req - Objeto de solicitud HTTP
- * @param res - Objeto de respuesta HTTP
+ * Procesa y almacena todos los lotes recibidos, asegurándose de borrar previamente
+ * todos los registros relacionados con el `codestablecimiento`.
  */
 export const receiveData = async (
   req: Request,
   res: Response
 ): Promise<void> => {
   try {
-    let datos: Medicamento[] = req.body;
+    // Obtener el payload enviado por el cliente
+    const {
+      loteNumero,
+      totalLotes,
+      totalDatos,
+      datos,
+    }: {
+      loteNumero: number;
+      totalLotes: number;
+      totalDatos: number;
+      datos: Medicamento[];
+    } = req.body;
 
-    // Validar que los datos sean un arreglo no vacío
+    // Validar el formato del payload
     if (!Array.isArray(datos) || datos.length === 0) {
       res.status(400).json({
         message: "Formato de datos inválido. Se esperaba un arreglo no vacío.",
@@ -49,35 +58,32 @@ export const receiveData = async (
       return;
     }
 
-    // Verificar si es el primer lote procesado para este codestablecimiento
-    let esPrimerLote = false;
-    if (!state.deletedCodestablecimientos.has(codestablecimiento)) {
-      // Eliminar todos los registros relacionados con el codestablecimiento
+    // Registrar información del lote recibido
+    console.log(`Recibiendo lote ${loteNumero} de ${totalLotes}`);
+    console.log(`Total de datos en el lote: ${datos.length}`);
+    console.log(`Total de datos esperados: ${totalDatos}`);
+
+    // Eliminar todos los registros relacionados con el `codestablecimiento` (solo una vez)
+    if (loteNumero === 1) {
+      console.log(
+        `Eliminando registros anteriores para codestablecimiento: ${codestablecimiento}`
+      );
+
       await sql`
         DELETE FROM medicamentos WHERE codestablecimiento = ${codestablecimiento}
       `;
 
-      // Registrar que el codestablecimiento ya ha sido procesado
-      state.deletedCodestablecimientos.add(codestablecimiento);
-      esPrimerLote = true; // Marcar como primer lote
-    }
-
-    // Mostrar mensaje solo para el primer lote procesado
-    if (esPrimerLote) {
       console.log(
         `Registros eliminados para codestablecimiento: ${codestablecimiento}`
       );
-      esPrimerLote = false;
     }
 
     // Ajustar los tipos de datos antes de la inserción
-    datos = ajustarTipos(datos);
-
-    //console.log("Datos ajustados:", datos);
+    const datosAjustados = ajustarTipos(datos);
 
     // Insertar todos los registros en la base de datos en una sola operación
     await Promise.all(
-      datos.map(async (dato) => {
+      datosAjustados.map(async (dato) => {
         await sql`
           INSERT INTO medicamentos (
             codestablecimiento, gru_codigo, med_codigo, gru_descripcion,
@@ -122,7 +128,10 @@ export const receiveData = async (
       })
     );
 
-    res.status(200).json({ message: "Datos almacenados con éxito." });
+    console.log(`Lote ${loteNumero} procesado con éxito.`);
+    res
+      .status(200)
+      .json({ message: `Lote ${loteNumero} procesado con éxito.` });
   } catch (error: any) {
     console.error("Error al procesar los datos:", error.message || error);
     res.status(500).json({
