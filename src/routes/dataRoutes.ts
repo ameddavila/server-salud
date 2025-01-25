@@ -1,12 +1,10 @@
-import { Router } from 'express';
-import { receiveData, receiveDataLogOnly } from '../controllers/dataController';
+import { Router } from "express";
+import { validateToken } from "../middlewares/validateToken";
+import { receiveData } from "../controllers/dataController";
 
 const router = Router();
 
-// Ruta para insertar datos en la base de datos
-router.post('/medicamentos', receiveData);
-
-// Ruta para solo registrar los datos recibidos
-router.post('/medicamentos/log', receiveDataLogOnly);
+// Ruta protegida para recibir datos de medicamentos
+router.post("/medicamentos", validateToken, receiveData);
 
 export default router;

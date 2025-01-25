@@ -1,5 +1,6 @@
 import dotenv from "dotenv";
 import sql from "./config/database"; // Asegúrate de que esta sea la configuración de @neondatabase/serverless
+import "./utils/renewApiKeyJob"; // Importar el cron job para que se inicie al arrancar el servidor
 
 dotenv.config();
 
