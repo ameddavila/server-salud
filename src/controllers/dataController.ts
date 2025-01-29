@@ -4,13 +4,6 @@ import jwt from "jsonwebtoken";
 import { Medicamento } from "../types/medicamento";
 import logger from "../utils/logger"; // Logger centralizado
 
-/**
- * Transforma los datos para ajustar los tipos de valores.
- * Convierte valores decimales a enteros para columnas que esperan enteros.
- *
- * @param datos - Arreglo de objetos con los datos recibidos
- * @returns Nuevo arreglo con los valores ajustados
- */
 const ajustarTipos = (datos: Medicamento[]): Medicamento[] => {
   return datos.map((dato) => ({
     ...dato,
@@ -19,21 +12,12 @@ const ajustarTipos = (datos: Medicamento[]): Medicamento[] => {
   }));
 };
 
-// Variable de control para manejar la eliminación
-const eliminadosPorCodEstablecimiento: Record<string, boolean> = {};
-
-/**
- * Procesa los datos enviados al servidor.
- * 1. Decodifica el JWT para obtener el `codestablecimiento`.
- * 2. Elimina los datos existentes solo para el primer lote del `codestablecimiento`.
- * 3. Inserta los nuevos datos en la base de datos.
- */
 export const receiveData = async (
   req: Request,
   res: Response
 ): Promise<void> => {
   try {
-    // Obtener el token JWT del encabezado
+    // Obtener el token JWT
     const authHeader = req.headers["authorization"];
     const token = authHeader && authHeader.split(" ")[1];
 
@@ -51,9 +35,9 @@ export const receiveData = async (
         codestablecimiento: string;
       };
       codestablecimiento = decoded.codestablecimiento;
-      logger.info(`JWT válido. CodEstablecimiento: ${codestablecimiento}`);
+      logger.info(`✅ JWT válido. CodEstablecimiento: ${codestablecimiento}`);
     } catch (error) {
-      logger.error("Error al decodificar el token JWT:", error);
+      logger.error("❌ Error al decodificar el token JWT:", error);
       res.status(403).json({ message: "Token inválido o expirado" });
       return;
     }
@@ -72,39 +56,38 @@ export const receiveData = async (
     } = req.body;
 
     if (!Array.isArray(datos) || datos.length === 0) {
-      logger.warn("Datos enviados en un formato inválido.");
+      logger.warn("❌ Datos enviados en un formato inválido.");
       res.status(400).json({
         message: "Formato de datos inválido. Se esperaba un arreglo no vacío.",
       });
       return;
     }
 
-    // Eliminar registros existentes SOLO una vez por codEstablecimiento
-    if (!eliminadosPorCodEstablecimiento[codestablecimiento]) {
+    // 🔴 Verificar y eliminar registros existentes
+    if (loteNumero === 1) {
       logger.info(
-        `Eliminando registros para el codEstablecimiento: ${codestablecimiento}`
+        `🗑️ Eliminando registros existentes para ${codestablecimiento}...`
       );
       await sql`
         DELETE FROM medicamentos WHERE codestablecimiento = ${codestablecimiento}
       `;
-      eliminadosPorCodEstablecimiento[codestablecimiento] = true; // Marca como eliminado
+      logger.info(
+        `✅ Registros antiguos eliminados para ${codestablecimiento}.`
+      );
     }
 
     // Log de los detalles del lote
-    logger.info(`Detalles del lote recibido:`);
-    logger.info(`Lote Número: ${loteNumero}`);
-    logger.info(`Total Lotes: ${totalLotes}`);
-    logger.info(`Total Datos: ${totalDatos}`);
-    logger.debug(
-      `Datos (primer elemento): ${JSON.stringify(datos[0], null, 2)}`
-    );
+    logger.info(`📦 Procesando lote recibido:`);
+    logger.info(`🔹 Lote Número: ${loteNumero}`);
+    logger.info(`🔹 Total Lotes: ${totalLotes}`);
+    logger.info(`🔹 Total Datos: ${totalDatos}`);
 
     // Ajustar los tipos de datos antes de la inserción
     const datosAjustados = ajustarTipos(datos);
 
-    // Insertar los datos en la base de datos
+    // Insertar los datos
     logger.info(
-      `Insertando datos para el codEstablecimiento: ${codestablecimiento}`
+      `📝 Insertando nuevos datos para el codEstablecimiento: ${codestablecimiento}`
     );
     await Promise.all(
       datosAjustados.map(async (dato) => {
@@ -152,12 +135,12 @@ export const receiveData = async (
       })
     );
 
-    logger.info(`Lote ${loteNumero} procesado con éxito.`);
+    logger.info(`✅ Lote ${loteNumero} procesado con éxito.`);
     res
       .status(200)
       .json({ message: `Lote ${loteNumero} procesado con éxito.` });
   } catch (error: any) {
-    logger.error("Error al procesar los datos:", error.message || error);
+    logger.error("❌ Error al procesar los datos:", error.message || error);
     res.status(500).json({
       message: "Error interno del servidor.",
       error: error.message || "Ocurrió un error inesperado.",
