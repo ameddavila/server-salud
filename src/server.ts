@@ -9,7 +9,7 @@ dotenv.config();
     // Prueba de conexión
     const result = await sql`SELECT version()`;
     console.log(
-      "Conexión exitosa a Neon. Versión de PostgreSQL:",
+      "Conexión exitosa a Neon. Versión de PostgreSQL: ",
       result[0].version
     );
 
