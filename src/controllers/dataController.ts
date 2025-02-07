@@ -138,7 +138,7 @@ export const receiveData = async (
     logger.info(`✅ Lote ${loteNumero} procesado con éxito.`);
     res
       .status(200)
-      .json({ message: `Lote ${loteNumero} procesado con éxito. ` });
+      .json({ message: `Lote ${loteNumero} procesado con éxito.` });
   } catch (error: any) {
     logger.error("❌ Error al procesar los datos:", error.message || error);
     res.status(500).json({
