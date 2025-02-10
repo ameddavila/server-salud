@@ -6,6 +6,10 @@ import authRoutes from "./routes/authRoutes";
 
 const app = express();
 
+app.get("/healthcheck", (req, res) => {
+  res.json({ status: "ok" });
+});
+
 // Configuración de CORS
 app.use(
   cors({
