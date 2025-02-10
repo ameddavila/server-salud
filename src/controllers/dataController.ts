@@ -92,6 +92,10 @@ export const receiveData = async (
     logger.info(`🔹 Total Datos: ${totalDatos}`);
 
     const datosAjustados = ajustarTipos(datos);
+    logger.info(
+      `🔎 Ejemplo de datos a insertar:`,
+      JSON.stringify(datosAjustados[0], null, 2)
+    );
 
     logger.info(
       `📝 Insertando nuevos datos para el codEstablecimiento: ${codestablecimiento}`
@@ -99,47 +103,51 @@ export const receiveData = async (
     try {
       await Promise.all(
         datosAjustados.map(async (dato) => {
-          await sql`
-            INSERT INTO medicamentos (
-              codestablecimiento, gru_codigo, med_codigo, gru_descripcion,
-              med_comercial, med_codificacion, med_unidad, med_concentracion,
-              med_tipo, tipo_med, ant_entradas, ant_salidas, saldo_inicial,
-              ant_entradas_costo, ant_salidas_costo, saldo_inicial_costo, entradas,
-              salidas, saldo, entradas_costo, salidas_costo, costo, meses_activos,
-              consumo_promedio, consumo_promedio1_5, consumo_promedio4_5, estado_inventario,
-              fecha_inicial, fecha_final
-            ) VALUES (
-              ${codestablecimiento},
-              ${dato.gru_codigo},
-              ${dato.med_codigo},
-              ${dato.gru_descripcion},
-              ${dato.med_comercial},
-              ${dato.med_codificacion},
-              ${dato.med_unidad},
-              ${dato.med_concentracion},
-              ${dato.med_tipo},
-              ${dato.tipo_med},
-              ${dato.ant_entradas || 0},
-              ${dato.ant_salidas || 0},
-              ${dato.saldo_inicial || 0},
-              ${dato.ant_entradas_costo || 0},
-              ${dato.ant_salidas_costo || 0},
-              ${dato.saldo_inicial_costo || 0},
-              ${dato.entradas || 0},
-              ${dato.salidas || 0},
-              ${dato.saldo || 0},
-              ${dato.entradas_costo || 0},
-              ${dato.salidas_costo || 0},
-              ${dato.costo || 0},
-              ${dato.meses_activos || 0},
-              ${dato.consumo_promedio || 0},
-              ${dato.consumo_promedio1_5 || 0},
-              ${dato.consumo_promedio4_5 || 0},
-              ${dato.estado_inventario || null},
-              ${dato.fecha_inicial},
-              ${dato.fecha_final}
-            )
-          `;
+          try {
+            await sql`
+              INSERT INTO medicamentos (
+                codestablecimiento, gru_codigo, med_codigo, gru_descripcion,
+                med_comercial, med_codificacion, med_unidad, med_concentracion,
+                med_tipo, tipo_med, ant_entradas, ant_salidas, saldo_inicial,
+                ant_entradas_costo, ant_salidas_costo, saldo_inicial_costo, entradas,
+                salidas, saldo, entradas_costo, salidas_costo, costo, meses_activos,
+                consumo_promedio, consumo_promedio1_5, consumo_promedio4_5, estado_inventario,
+                fecha_inicial, fecha_final
+              ) VALUES (
+                ${codestablecimiento},
+                ${dato.gru_codigo},
+                ${dato.med_codigo},
+                ${dato.gru_descripcion},
+                ${dato.med_comercial},
+                ${dato.med_codificacion},
+                ${dato.med_unidad},
+                ${dato.med_concentracion},
+                ${dato.med_tipo},
+                ${dato.tipo_med},
+                ${dato.ant_entradas || 0},
+                ${dato.ant_salidas || 0},
+                ${dato.saldo_inicial || 0},
+                ${dato.ant_entradas_costo || 0},
+                ${dato.ant_salidas_costo || 0},
+                ${dato.saldo_inicial_costo || 0},
+                ${dato.entradas || 0},
+                ${dato.salidas || 0},
+                ${dato.saldo || 0},
+                ${dato.entradas_costo || 0},
+                ${dato.salidas_costo || 0},
+                ${dato.costo || 0},
+                ${dato.meses_activos || 0},
+                ${dato.consumo_promedio || 0},
+                ${dato.consumo_promedio1_5 || 0},
+                ${dato.consumo_promedio4_5 || 0},
+                ${dato.estado_inventario || null},
+                ${dato.fecha_inicial},
+                ${dato.fecha_final}
+              )
+            `;
+          } catch (insertError) {
+            logger.error("❌ Error al insertar registro:", insertError);
+          }
         })
       );
       logger.info(`✅ Lote ${loteNumero} procesado con éxito.`);
@@ -147,17 +155,13 @@ export const receiveData = async (
         .status(200)
         .json({ message: `Lote ${loteNumero} procesado con éxito.` });
     } catch (dbInsertError) {
-      const errorMessage =
-        dbInsertError instanceof Error
-          ? dbInsertError.message
-          : String(dbInsertError);
-      logger.error(
-        "❌ Error al insertar los datos en la base de datos:",
-        errorMessage
-      );
+      logger.error("❌ Error general al insertar los datos:", dbInsertError);
       res.status(500).json({
         message: "Error al insertar datos en la base de datos.",
-        error: errorMessage,
+        error:
+          dbInsertError instanceof Error
+            ? dbInsertError.message
+            : String(dbInsertError),
       });
     }
   } catch (error: any) {
