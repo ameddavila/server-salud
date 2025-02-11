@@ -73,12 +73,10 @@ export const receiveData = async (
         );
       } catch (dbError) {
         logger.error("❌ Error al eliminar registros existentes:", dbError);
-        res
-          .status(500)
-          .json({
-            message: "Error al eliminar registros antiguos.",
-            error: dbError,
-          });
+        res.status(500).json({
+          message: "Error al eliminar registros antiguos.",
+          error: dbError,
+        });
         return;
       }
     }
@@ -88,7 +86,7 @@ export const receiveData = async (
     );
     const datosAjustados = ajustarTipos(datos);
     logger.info(
-      `🔎 Ejemplo de datos a insertar:`,
+      `🔎 Datos a insertar:`,
       JSON.stringify(datosAjustados[0], null, 2)
     );
 
@@ -144,12 +142,10 @@ export const receiveData = async (
     } catch (dbInsertError) {
       await sql`ROLLBACK;`;
       logger.error("❌ Error al insertar los datos:", dbInsertError);
-      res
-        .status(500)
-        .json({
-          message: "Error al insertar datos en la base de datos.",
-          error: dbInsertError,
-        });
+      res.status(500).json({
+        message: "Error al insertar datos en la base de datos.",
+        error: dbInsertError,
+      });
     }
   } catch (error) {
     logger.error("❌ Error al procesar los datos:", error);
