@@ -4,6 +4,9 @@ import jwt from "jsonwebtoken";
 import { Medicamento } from "../types/medicamento";
 import logger from "../utils/logger"; // Logger centralizado
 
+const MAX_RETRIES = 3; // Número máximo de intentos para inserción
+const RETRY_DELAY = 2000; // Tiempo de espera entre intentos en milisegundos
+
 const ajustarTipos = (datos: Medicamento[]): Medicamento[] => {
   return datos.map((dato) => ({
     ...dato,
@@ -103,50 +106,65 @@ export const receiveData = async (
     try {
       await Promise.all(
         datosAjustados.map(async (dato) => {
-          try {
-            await sql`
-              INSERT INTO medicamentos (
-                codestablecimiento, gru_codigo, med_codigo, gru_descripcion,
-                med_comercial, med_codificacion, med_unidad, med_concentracion,
-                med_tipo, tipo_med, ant_entradas, ant_salidas, saldo_inicial,
-                ant_entradas_costo, ant_salidas_costo, saldo_inicial_costo, entradas,
-                salidas, saldo, entradas_costo, salidas_costo, costo, meses_activos,
-                consumo_promedio, consumo_promedio1_5, consumo_promedio4_5, estado_inventario,
-                fecha_inicial, fecha_final
-              ) VALUES (
-                ${codestablecimiento},
-                ${dato.gru_codigo},
-                ${dato.med_codigo},
-                ${dato.gru_descripcion},
-                ${dato.med_comercial},
-                ${dato.med_codificacion},
-                ${dato.med_unidad},
-                ${dato.med_concentracion},
-                ${dato.med_tipo},
-                ${dato.tipo_med},
-                ${dato.ant_entradas || 0},
-                ${dato.ant_salidas || 0},
-                ${dato.saldo_inicial || 0},
-                ${dato.ant_entradas_costo || 0},
-                ${dato.ant_salidas_costo || 0},
-                ${dato.saldo_inicial_costo || 0},
-                ${dato.entradas || 0},
-                ${dato.salidas || 0},
-                ${dato.saldo || 0},
-                ${dato.entradas_costo || 0},
-                ${dato.salidas_costo || 0},
-                ${dato.costo || 0},
-                ${dato.meses_activos || 0},
-                ${dato.consumo_promedio || 0},
-                ${dato.consumo_promedio1_5 || 0},
-                ${dato.consumo_promedio4_5 || 0},
-                ${dato.estado_inventario || null},
-                ${dato.fecha_inicial},
-                ${dato.fecha_final}
-              )
-            `;
-          } catch (insertError) {
-            logger.error("❌ Error al insertar registro:", insertError);
+          let intentos = 0;
+          while (intentos < MAX_RETRIES) {
+            try {
+              await sql`
+                INSERT INTO medicamentos (
+                  codestablecimiento, gru_codigo, med_codigo, gru_descripcion,
+                  med_comercial, med_codificacion, med_unidad, med_concentracion,
+                  med_tipo, tipo_med, ant_entradas, ant_salidas, saldo_inicial,
+                  ant_entradas_costo, ant_salidas_costo, saldo_inicial_costo, entradas,
+                  salidas, saldo, entradas_costo, salidas_costo, costo, meses_activos,
+                  consumo_promedio, consumo_promedio1_5, consumo_promedio4_5, estado_inventario,
+                  fecha_inicial, fecha_final
+                ) VALUES (
+                  ${codestablecimiento}, ${dato.gru_codigo}, ${dato.med_codigo},
+                  ${dato.gru_descripcion}, ${dato.med_comercial}, ${
+                dato.med_codificacion
+              },
+                  ${dato.med_unidad}, ${dato.med_concentracion}, ${
+                dato.med_tipo
+              },
+                  ${dato.tipo_med}, ${dato.ant_entradas || 0}, ${
+                dato.ant_salidas || 0
+              },
+                  ${dato.saldo_inicial || 0}, ${
+                dato.ant_entradas_costo || 0
+              }, ${dato.ant_salidas_costo || 0},
+                  ${dato.saldo_inicial_costo || 0}, ${dato.entradas || 0}, ${
+                dato.salidas || 0
+              },
+                  ${dato.saldo || 0}, ${dato.entradas_costo || 0}, ${
+                dato.salidas_costo || 0
+              },
+                  ${dato.costo || 0}, ${dato.meses_activos || 0}, ${
+                dato.consumo_promedio || 0
+              },
+                  ${dato.consumo_promedio1_5 || 0}, ${
+                dato.consumo_promedio4_5 || 0
+              },
+                  ${dato.estado_inventario || null}, ${dato.fecha_inicial}, ${
+                dato.fecha_final
+              }
+                )
+              `;
+              break;
+            } catch (insertError) {
+              intentos++;
+              logger.warn(
+                `⚠️ Intento ${intentos} fallido para insertar registro:`,
+                insertError
+              );
+              if (intentos >= MAX_RETRIES) {
+                logger.error(
+                  "❌ Falló la inserción después de 3 intentos:",
+                  insertError
+                );
+              } else {
+                await new Promise((res) => setTimeout(res, RETRY_DELAY));
+              }
+            }
           }
         })
       );
