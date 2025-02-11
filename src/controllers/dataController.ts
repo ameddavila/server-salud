@@ -17,7 +17,6 @@ export const receiveData = async (
   res: Response
 ): Promise<void> => {
   try {
-    // Obtener el token JWT
     const authHeader = req.headers["authorization"];
     const token = authHeader && authHeader.split(" ")[1];
 
@@ -27,7 +26,6 @@ export const receiveData = async (
       return;
     }
 
-    // Decodificar el token para obtener el codestablecimiento
     const secret = process.env.JWT_SECRET || "your_jwt_secret";
     let codestablecimiento: string;
     try {
@@ -42,7 +40,6 @@ export const receiveData = async (
       return;
     }
 
-    // Extraer los datos del cuerpo de la solicitud
     const {
       loteNumero,
       totalLotes,
@@ -63,34 +60,40 @@ export const receiveData = async (
       return;
     }
 
-    // 🔴 Verificar y eliminar registros existentes
     if (loteNumero === 1) {
       logger.info(
         `🗑️ Eliminando registros existentes para ${codestablecimiento}...`
       );
-      await sql`
-        DELETE FROM medicamentos WHERE codestablecimiento = ${codestablecimiento}
-      `;
-      logger.info(
-        `✅ Registros antiguos eliminados para ${codestablecimiento}.`
-      );
+      try {
+        await sql`
+          DELETE FROM medicamentos WHERE codestablecimiento = ${codestablecimiento}
+        `;
+        logger.info(
+          `✅ Registros antiguos eliminados para ${codestablecimiento}.`
+        );
+      } catch (dbError) {
+        logger.error("❌ Error al eliminar registros existentes:", dbError);
+        res.status(500).json({
+          message: "Error al eliminar registros antiguos.",
+          error: dbError,
+        });
+        return;
+      }
     }
 
-    // Log de los detalles del lote
-    logger.info(`📦 Procesando lote recibido:`);
-    logger.info(`🔹 Lote Número: ${loteNumero}`);
-    logger.info(`🔹 Total Lotes: ${totalLotes}`);
-    logger.info(`🔹 Total Datos: ${totalDatos}`);
-
-    // Ajustar los tipos de datos antes de la inserción
-    const datosAjustados = ajustarTipos(datos);
-
-    // Insertar los datos
     logger.info(
-      `📝 Insertando nuevos datos para el codEstablecimiento: ${codestablecimiento}`
+      `📦 Procesando lote recibido: Lote ${loteNumero} de ${totalLotes}, Total de datos: ${totalDatos}`
     );
-    await Promise.all(
-      datosAjustados.map(async (dato) => {
+    const datosAjustados = ajustarTipos(datos);
+    logger.info(
+      `🔎 Datos a insertar:`,
+      JSON.stringify(datosAjustados[0], null, 2)
+    );
+
+    try {
+      await sql`BEGIN;`;
+
+      for (const dato of datosAjustados) {
         await sql`
           INSERT INTO medicamentos (
             codestablecimiento, gru_codigo, med_codigo, gru_descripcion,
@@ -101,49 +104,51 @@ export const receiveData = async (
             consumo_promedio, consumo_promedio1_5, consumo_promedio4_5, estado_inventario,
             fecha_inicial, fecha_final
           ) VALUES (
-            ${codestablecimiento},
-            ${dato.gru_codigo},
-            ${dato.med_codigo},
-            ${dato.gru_descripcion},
-            ${dato.med_comercial},
-            ${dato.med_codificacion},
-            ${dato.med_unidad},
-            ${dato.med_concentracion},
-            ${dato.med_tipo},
-            ${dato.tipo_med},
-            ${dato.ant_entradas || 0},
-            ${dato.ant_salidas || 0},
-            ${dato.saldo_inicial || 0},
-            ${dato.ant_entradas_costo || 0},
-            ${dato.ant_salidas_costo || 0},
-            ${dato.saldo_inicial_costo || 0},
-            ${dato.entradas || 0},
-            ${dato.salidas || 0},
-            ${dato.saldo || 0},
-            ${dato.entradas_costo || 0},
-            ${dato.salidas_costo || 0},
-            ${dato.costo || 0},
-            ${dato.meses_activos || 0},
-            ${dato.consumo_promedio || 0},
-            ${dato.consumo_promedio1_5 || 0},
-            ${dato.consumo_promedio4_5 || 0},
-            ${dato.estado_inventario || null},
-            ${dato.fecha_inicial},
-            ${dato.fecha_final}
+            ${codestablecimiento}, ${dato.gru_codigo}, ${dato.med_codigo},
+            ${dato.gru_descripcion}, ${dato.med_comercial}, ${
+          dato.med_codificacion
+        },
+            ${dato.med_unidad}, ${dato.med_concentracion}, ${dato.med_tipo},
+            ${dato.tipo_med}, ${dato.ant_entradas || 0}, ${
+          dato.ant_salidas || 0
+        },
+            ${dato.saldo_inicial || 0}, ${dato.ant_entradas_costo || 0}, ${
+          dato.ant_salidas_costo || 0
+        },
+            ${dato.saldo_inicial_costo || 0}, ${dato.entradas || 0}, ${
+          dato.salidas || 0
+        },
+            ${dato.saldo || 0}, ${dato.entradas_costo || 0}, ${
+          dato.salidas_costo || 0
+        },
+            ${dato.costo || 0}, ${dato.meses_activos || 0}, ${
+          dato.consumo_promedio || 0
+        },
+            ${dato.consumo_promedio1_5 || 0}, ${dato.consumo_promedio4_5 || 0},
+            ${dato.estado_inventario || null}, ${dato.fecha_inicial}, ${
+          dato.fecha_final
+        }
           )
+          ON CONFLICT (codestablecimiento, med_codigo) DO UPDATE
+          SET saldo = EXCLUDED.saldo;
         `;
-      })
-    );
+      }
 
-    logger.info(`✅ Lote ${loteNumero} procesado con éxito.`);
-    res
-      .status(200)
-      .json({ message: `Lote ${loteNumero} procesado con éxito.` });
-  } catch (error: any) {
-    logger.error("❌ Error al procesar los datos:", error.message || error);
-    res.status(500).json({
-      message: "Error interno del servidor.",
-      error: error.message || "Ocurrió un error inesperado.",
-    });
+      await sql`COMMIT;`;
+      logger.info(`✅ Lote ${loteNumero} procesado con éxito.`);
+      res
+        .status(200)
+        .json({ message: `Lote ${loteNumero} procesado con éxito.` });
+    } catch (dbInsertError) {
+      await sql`ROLLBACK;`;
+      logger.error("❌ Error al insertar los datos:", dbInsertError);
+      res.status(500).json({
+        message: "Error al insertar datos en la base de datos.",
+        error: dbInsertError,
+      });
+    }
+  } catch (error) {
+    logger.error("❌ Error al procesar los datos:", error);
+    res.status(500).json({ message: "Error interno del servidor.", error });
   }
 };
