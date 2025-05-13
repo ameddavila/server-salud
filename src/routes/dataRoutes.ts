@@ -1,10 +1,15 @@
 import { Router } from "express";
 import { validateToken } from "../middlewares/validateToken";
 import { receiveData } from "../controllers/dataController";
+import { receiveServiciosSiaf } from "../controllers/receiveServiciosSiaf";
+
 
 const router = Router();
 
-// Ruta protegida para recibir datos de medicamentos
+// Medicamentos
 router.post("/medicamentos", validateToken, receiveData);
+
+// Servicios SIAF
+router.post("/serviciossiaf", validateToken, receiveServiciosSiaf);
 
 export default router;
