@@ -55,7 +55,7 @@ export const receiveServiciosSiaf = async (
       logger.info(`🗑️ Eliminando registros previos de servicios SIAF para ${codestablecimiento}...`);
       try {
         await sql`
-          DELETE FROM servisiossiaf WHERE codestablecimiento = ${codestablecimiento}
+          DELETE FROM serviciossiaf WHERE codestablecimiento = ${codestablecimiento}
         `;
         logger.info(`✅ Registros antiguos eliminados.`);
       } catch (error) {
