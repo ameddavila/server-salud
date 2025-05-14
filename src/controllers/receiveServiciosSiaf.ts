@@ -93,33 +93,32 @@ await sql`
     tipo, vsercodigo, vgrucodigo, vserdescri
   )
   SELECT 
-    gen_random_uuid(), 
-    codestablecimiento, vsersigla, cocdescri, fu_codigo, nombre,
-    vrececha, id_mes, anio, cantidad, costo, vdetpreuni, vclihiccli,
-    tipo, vsercodigo, vgrucodigo, vserdescri
+    gen_random_uuid(),
+    * 
   FROM UNNEST (
-    ${valores.map(v => v[0])}::int[],
-    ${valores.map(v => v[1])}::text[],
-    ${valores.map(v => v[2])}::text[],
-    ${valores.map(v => v[3])}::int[],
-    ${valores.map(v => v[4])}::text[],
-    ${valores.map(v => v[5])}::timestamptz[],
-    ${valores.map(v => v[6])}::int[],
-    ${valores.map(v => v[7])}::int[],
-    ${valores.map(v => v[8])}::int[],
-    ${valores.map(v => v[9])}::numeric[],
-    ${valores.map(v => v[10])}::numeric[],
-    ${valores.map(v => v[11])}::text[],
-    ${valores.map(v => v[12])}::int[],
-    ${valores.map(v => v[13])}::int[],
-    ${valores.map(v => v[14])}::int[],
-    ${valores.map(v => v[15])}::text[]
+    ${valores.map(v => v[0])}::int[],          -- codestablecimiento
+    ${valores.map(v => v[1])}::text[],         -- vsersigla
+    ${valores.map(v => v[2])}::text[],         -- cocdescri
+    ${valores.map(v => v[3])}::int[],          -- fu_codigo
+    ${valores.map(v => v[4])}::text[],         -- nombre
+    ${valores.map(v => v[5])}::timestamp[],    -- vrececha
+    ${valores.map(v => v[6])}::int[],          -- id_mes
+    ${valores.map(v => v[7])}::int[],          -- anio
+    ${valores.map(v => v[8])}::int[],          -- cantidad
+    ${valores.map(v => v[9])}::numeric(10,2)[],-- costo
+    ${valores.map(v => v[10])}::numeric(10,2)[],-- vdetpreuni
+    ${valores.map(v => v[11])}::int[],         -- vclihiccli
+    ${valores.map(v => v[12])}::text[],        -- tipo
+    ${valores.map(v => v[13])}::int[],         -- vsercodigo
+    ${valores.map(v => v[14])}::int[],         -- vgrucodigo
+    ${valores.map(v => v[15])}::text[]         -- vserdescri
   ) AS t (
     codestablecimiento, vsersigla, cocdescri, fu_codigo, nombre,
     vrececha, id_mes, anio, cantidad, costo, vdetpreuni, vclihiccli,
     tipo, vsercodigo, vgrucodigo, vserdescri
   )
 `;
+
 
 
       await sql`COMMIT;`;
