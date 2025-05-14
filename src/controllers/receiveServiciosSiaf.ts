@@ -42,19 +42,23 @@ export const receiveServiciosSiaf = async (req: Request, res: Response): Promise
 
     if (!Array.isArray(datos) || datos.length === 0) {
       logger.warn("❌ Datos de servicios SIAF inválidos.");
-      res.status(400).json({
-        message: "Formato de datos inválido. Se esperaba un arreglo no vacío.",
-      });
+      res.status(400).json({ message: "Formato de datos inválido. Se esperaba un arreglo no vacío." });
       return;
     }
 
+    const id_mes = datos[0]?.id_mes;
+    const anio = datos[0]?.anio;
+
     if (loteNumero === 1) {
-      logger.info(`🗑️ Eliminando registros previos de servicios SIAF para ${codestablecimiento}...`);
+      logger.info(`🗑️ Eliminando registros previos para codestablecimiento=${codestablecimiento}, mes=${id_mes}, año=${anio}...`);
       try {
         await sql`
-          DELETE FROM serviciossiaf WHERE codestablecimiento = ${codestablecimiento}
+          DELETE FROM serviciossiaf
+          WHERE codestablecimiento = ${codestablecimiento}
+            AND id_mes = ${id_mes}
+            AND anio = ${anio}
         `;
-        logger.info(`✅ Registros antiguos eliminados.`);
+        logger.info("✅ Registros antiguos eliminados.");
       } catch (error) {
         logger.error("❌ Error al eliminar registros existentes:", error);
         res.status(500).json({ message: "Error al limpiar registros anteriores.", error });
@@ -68,58 +72,56 @@ export const receiveServiciosSiaf = async (req: Request, res: Response): Promise
       await sql`BEGIN;`;
 
       const valores = datos.map((row) => [
-  codestablecimiento,
-  row.vsersigla,
-  row.cocdescri,
-  row.fu_codigo,
-  row.nombre,
-  row.vrececha,
-  row.id_mes,
-  row.anio,
-  row.cantidad,
-  row.costo,
-  row.vdetpreuni,
-  row.vclihiccli,
-  row.tipo,
-  row.vsercodigo,
-  row.vgrucodigo,
-  row.vserdescri,
-]);
+        codestablecimiento,
+        row.vsersigla,
+        row.cocdescri,
+        row.fu_codigo,
+        row.nombre,
+        row.vrececha,
+        row.id_mes,
+        row.anio,
+        row.cantidad,
+        row.costo,
+        row.vdetpreuni,
+        row.vclihiccli,
+        row.tipo,
+        row.vsercodigo,
+        row.vgrucodigo,
+        row.vserdescri,
+      ]);
 
-await sql`
-  INSERT INTO serviciossiaf (
-    id, codestablecimiento, vsersigla, cocdescri, fu_codigo, nombre,
-    vrececha, id_mes, anio, cantidad, costo, vdetpreuni, vclihiccli,
-    tipo, vsercodigo, vgrucodigo, vserdescri
-  )
-  SELECT 
-    gen_random_uuid(),
-    * 
-  FROM UNNEST (
-    ${valores.map(v => v[0])}::int[],          -- codestablecimiento
-    ${valores.map(v => v[1])}::text[],         -- vsersigla
-    ${valores.map(v => v[2])}::text[],         -- cocdescri
-    ${valores.map(v => v[3])}::int[],          -- fu_codigo
-    ${valores.map(v => v[4])}::text[],         -- nombre
-    ${valores.map(v => v[5])}::timestamp[],    -- vrececha
-    ${valores.map(v => v[6])}::int[],          -- id_mes
-    ${valores.map(v => v[7])}::int[],          -- anio
-    ${valores.map(v => v[8])}::int[],          -- cantidad
-    ${valores.map(v => v[9])}::numeric(10,2)[],-- costo
-    ${valores.map(v => v[10])}::numeric(10,2)[],-- vdetpreuni
-    ${valores.map(v => v[11])}::int[],         -- vclihiccli
-    ${valores.map(v => v[12])}::text[],        -- tipo
-    ${valores.map(v => v[13])}::int[],         -- vsercodigo
-    ${valores.map(v => v[14])}::int[],         -- vgrucodigo
-    ${valores.map(v => v[15])}::text[]         -- vserdescri
-  ) AS t (
-    codestablecimiento, vsersigla, cocdescri, fu_codigo, nombre,
-    vrececha, id_mes, anio, cantidad, costo, vdetpreuni, vclihiccli,
-    tipo, vsercodigo, vgrucodigo, vserdescri
-  )
-`;
-
-
+      await sql`
+        INSERT INTO serviciossiaf (
+          id, codestablecimiento, vsersigla, cocdescri, fu_codigo, nombre,
+          vrececha, id_mes, anio, cantidad, costo, vdetpreuni, vclihiccli,
+          tipo, vsercodigo, vgrucodigo, vserdescri
+        )
+        SELECT 
+          gen_random_uuid(),
+          * 
+        FROM UNNEST (
+          ${valores.map(v => v[0])}::int[],            -- codestablecimiento
+          ${valores.map(v => v[1])}::text[],           -- vsersigla
+          ${valores.map(v => v[2])}::text[],           -- cocdescri
+          ${valores.map(v => v[3])}::int[],            -- fu_codigo
+          ${valores.map(v => v[4])}::text[],           -- nombre
+          ${valores.map(v => v[5])}::timestamp[],      -- vrececha
+          ${valores.map(v => v[6])}::int[],            -- id_mes
+          ${valores.map(v => v[7])}::int[],            -- anio
+          ${valores.map(v => v[8])}::int[],            -- cantidad
+          ${valores.map(v => v[9])}::numeric(10,2)[],  -- costo
+          ${valores.map(v => v[10])}::numeric(10,2)[], -- vdetpreuni
+          ${valores.map(v => v[11])}::int[],           -- vclihiccli
+          ${valores.map(v => v[12])}::text[],          -- tipo
+          ${valores.map(v => v[13])}::int[],           -- vsercodigo
+          ${valores.map(v => v[14])}::int[],           -- vgrucodigo
+          ${valores.map(v => v[15])}::text[]           -- vserdescri
+        ) AS t (
+          codestablecimiento, vsersigla, cocdescri, fu_codigo, nombre,
+          vrececha, id_mes, anio, cantidad, costo, vdetpreuni, vclihiccli,
+          tipo, vsercodigo, vgrucodigo, vserdescri
+        )
+      `;
 
       await sql`COMMIT;`;
       logger.info(`✅ Lote ${loteNumero} insertado exitosamente.`);
